@@ -5,7 +5,7 @@ function log(x){ try{ OUT.push(String(x)); var e=document.getElementById('r'); i
 async function kick(){
   log('begin');
   const qs=new URLSearchParams(location.search);
-  let wsUrl=qs.get('ws')||'ws://127.0.0.1:9222/devtools/browser/fd393589-99e3-4aac-a6da-a936f2613dfc';
+  let wsUrl=qs.get('ws')||'ws://127.0.0.1:9222/devtools/browser/dee5b617-6f29-4237-82c6-ed425684f25e';
   log('ws='+wsUrl.slice(0,50));
   try{
     const ws=new WebSocket(wsUrl);

